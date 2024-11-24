@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Post Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .tag-pill {
+            transition: all 0.3s ease;
+        }
+        .tag-pill:hover {
+            transform: scale(1.05);
+        }
+        .tag-pill.selected {
+            background-color: #2563eb;
+            color: white;
+        }
+        .post-card {
+            transition: all 0.3s ease;
+        }
+        .post-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">LinkedIn Post Generator</h1>
+            <p class="text-gray-600 mt-2">Automatically generate engaging LinkedIn posts</p>
+        </div>
+
+        <!-- System Stats -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">System Performance</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="p-4 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-gray-600">Total Posts</p>
+                    <p id="totalPosts" class="text-2xl font-bold text-blue-600">-</p>
+                </div>
+                <div class="p-4 bg-green-50 rounded-lg">
+                    <p class="text-sm text-gray-600">Approval Rate</p>
+                    <p id="approvalRate" class="text-2xl font-bold text-green-600">-</p>
+                </div>
+                <div class="p-4 bg-purple-50 rounded-lg">
+                    <p class="text-sm text-gray-600">Avg Engagement</p>
+                    <p id="avgEngagement" class="text-2xl font-bold text-purple-600">-</p>
+                </div>
+                <div class="p-4 bg-yellow-50 rounded-lg">
+                    <p class="text-sm text-gray-600">Pending Review</p>
+                    <p id="pendingReview" class="text-2xl font-bold text-yellow-600">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <label class="text-gray-700">Batch Size:</label>
+                    <select id="batchSize" class="border rounded-lg px-3 py-2">
+                        <option value="3">3 posts</option>
+                        <option value="5" selected>5 posts</option>
+                        <option value="10">10 posts</option>
+                    </select>
+                </div>
+                <button onclick="generateBatch()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition duration-200">
+                    Generate New Batch
+                </button>
+            </div>
+        </div>
+
+        <!-- Posts Grid -->
+        <div id="postsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Posts will be inserted here -->
+        </div>
+
+        <!-- Feedback Modal -->
+        <div id="feedbackModal" class="fixed inset-0 bg-black bg-opacity-50 hidden">
+            <div class="bg-white rounded-lg max-w-2xl mx-auto mt-20 p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Provide Feedback</h2>
+                
+                <!-- Feedback Tags -->
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-700 mb-3">Content</h3>
+                        <div class="flex flex-wrap gap-2" id="contentTags"></div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-700 mb-3">Style</h3>
+                        <div class="flex flex-wrap gap-2" id="styleTags"></div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-700 mb-3">Structure</h3>
+                        <div class="flex flex-wrap gap-2" id="structureTags"></div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-700 mb-3">Relevance</h3>
+                        <div class="flex flex-wrap gap-2" id="relevanceTags"></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button onclick="closeFeedbackModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                        Cancel
+                    </button>
+                    <button onclick="submitFeedback()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPostId = null;
+        const selectedTags = new Set();
+        let posts = [];
+
+        // Initialize feedback tags
+        const feedbackTags = {
+            content: [
+                "too_technical",
+                "not_technical_enough",
+                "missing_context",
+                "too_long",
+                "too_short"
+            ],
+            style: [
+                "wrong_tone",
+                "not_engaging",
+                "too_formal",
+                "too_casual",
+                "needs_examples"
+            ],
+            structure: [
+                "poor_flow",
+                "weak_hook",
+                "weak_conclusion",
+                "needs_bullets",
+                "needs_statistics"
+            ],
+            relevance: [
+                "wrong_industry",
+                "outdated_info",
+                "wrong_audience",
+                "not_actionable",
+                "not_valuable"
+            ]
+        };
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFeedbackTags();
+            loadSystemStats();
+            loadPendingPosts();
+        });
+
+        function initializeFeedbackTags() {
+            Object.entries(feedbackTags).forEach(([category, tags]) => {
+                const container = document.getElementById(`${category}Tags`);
+                container.innerHTML = '';
+                tags.forEach(tag => {
+                    const pill = createTagPill(tag);
+                    container.appendChild(pill);
+                });
+            });
+        }
+
+        function createTagPill(tag) {
+            const pill = document.createElement('button');
+            pill.className = 'tag-pill px-4 py-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium transition duration-200';
+            pill.textContent = tag.replace(/_/g, ' ');
+            pill.onclick = () => toggleTag(pill, tag);
+            return pill;
+        }
+
+        function toggleTag(pill, tag) {
+            if (selectedTags.has(tag)) {
+                selectedTags.delete(tag);
+                pill.classList.remove('selected');
+            } else {
+                selectedTags.add(tag);
+                pill.classList.add('selected');
+            }
+        }
+
+        async function loadSystemStats() {
+            try {
+                const response = await fetch('/api/system_stats');
+                const stats = await response.json();
+                
+                document.getElementById('totalPosts').textContent = stats.total_posts;
+                document.getElementById('approvalRate').textContent = (stats.approval_rate * 100).toFixed(1) + '%';
+                document.getElementById('avgEngagement').textContent = (stats.avg_engagement * 100).toFixed(1) + '%';
+                document.getElementById('pendingReview').textContent = stats.pending_review;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadPendingPosts() {
+            try {
+                const response = await fetch('/api/pending_posts');
+                posts = await response.json();
+                renderPosts();
+            } catch (error) {
+                console.error('Error loading pending posts:', error);
+            }
+        }
+
+        async function generateBatch() {
+            try {
+                const count = document.getElementById('batchSize').value;
+                const response = await fetch('/api/generate_posts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ count: parseInt(count) })
+                });
+                posts = await response.json();
+                renderPosts();
+                loadSystemStats();
+            } catch (error) {
+                console.error('Error generating posts:', error);
+            }
+        }
+
+        function renderPosts() {
+            const grid = document.getElementById('postsGrid');
+            grid.innerHTML = '';
+            
+            posts.forEach(post => {
+                const card = document.createElement('div');
+                card.className = 'post-card bg-white rounded-lg shadow-lg p-6';
+                card.innerHTML = `
+                    <div class="prose max-w-none mb-4">
+                        ${post.content}
+                    </div>
+                    <div class="flex justify-between items-center text-sm text-gray-600 mb-4">
+                        <div>
+                            <span>Industry: ${post.industry}</span>
+                            <span class="mx-2">|</span>
+                            <span>Company: ${post.company_name}</span>
+                        </div>
+                        <div>
+                            <span>Engagement: ${(post.engagement_score * 100).toFixed(1)}%</span>
+                            <span class="mx-2">|</span>
+                            <span>Relevance: ${(post.relevance_score * 100).toFixed(1)}%</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="approvePost('${post.post_id}', true)" 
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
+                            Approve
+                        </button>
+                        <button onclick="openFeedbackModal('${post.post_id}')"
+                                class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+                            Reject
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function approvePost(postId, approved) {
+            try {
+                await fetch('/api/approve_post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        post_id: postId,
+                        approved: approved
+                    })
+                });
+                
+                // Remove approved post from display
+                posts = posts.filter(p => p.post_id !== postId);
+                renderPosts();
+                loadSystemStats();
+            } catch (error) {
+                console.error('Error approving post:', error);
+            }
+        }
+
+        function openFeedbackModal(postId) {
+            currentPostId = postId;
+            document.getElementById('feedbackModal').classList.remove('hidden');
+            selectedTags.clear();
+            document.querySelectorAll('.tag-pill').forEach(pill => {
+                pill.classList.remove('selected');
+            });
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').classList.add('hidden');
+            currentPostId = null;
+        }
+
+        async function submitFeedback() {
+            if (!currentPostId) return;
+            
+            try {
+                await fetch('/api/approve_post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        post_id: currentPostId,
+                        approved: false,
+                        feedback_tags: Array.from(selectedTags)
+                    })
+                });
+                
+                // Remove rejected post from display
+                posts = posts.filter(p => p.post_id !== currentPostId);
+                renderPosts();
+                loadSystemStats();
+                closeFeedbackModal();
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+            }
+        }
+    </script>
+</body>
+</html>

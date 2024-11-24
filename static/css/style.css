@@ -1,0 +1,56 @@
+.container {
+    max-width: 800px;
+    margin-top: 2rem;
+}
+
+.tab-content {
+    padding: 20px;
+}
+
+.post-preview {
+    white-space: pre-wrap;
+    margin: 20px 0;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+}
+
+.scheduled-post {
+    margin-bottom: 15px;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.btn-copy {
+    margin-right: 10px;
+}
+
+.nav-tabs {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    font-weight: 500;
+}
+
+textarea.form-control {
+    min-height: 120px;
+}
+
+.alert {
+    margin-top: 1rem;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.bi {
+    margin-right: 5px;
+}
